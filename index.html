@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LibreExportButtons — dev harness</title>
+    <!--
+      The library pages already load these; the widget only references the class names.
+      MindTouch's own icon font (mt-icon-*) is not publicly available, so those icons
+      render as empty boxes here.
+    -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    />
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        padding: 2rem;
+        max-width: 70ch;
+      }
+      .elm-social-share {
+        margin: 1.5rem 0;
+        padding: 1rem;
+        border: 1px dashed #999;
+      }
+      .elm-social-share::before {
+        content: '.elm-social-share';
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 12px;
+        color: #666;
+      }
+      .libre-dropdown {
+        position: relative;
+        display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>LibreExportButtons dev harness</h1>
+    <p>
+      This page stubs the LibreTexts host globals, the hidden holder elements, and the
+      Commons / DownloadsCenter / Conductor / Shapeshift endpoints so the export buttons
+      run standalone under Vite. It is not shipped. Edit anything under
+      <code>src/</code> and the page reloads.
+    </p>
+    <p>
+      The button row replaces the contents of the dashed box below, the same as it does
+      to the CXone social-share bar in production. Adjust <code>dev/mocks.ts</code> to
+      exercise different states (Pro vs. admin, missing downloads, no Commons entry).
+    </p>
+    <script type="module" src="/dev/main.ts"></script>
+  </body>
+</html>

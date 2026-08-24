@@ -1,0 +1,21 @@
+{
+  "name": "export-buttons",
+  "version": "1.0.0",
+  "description": "The LibreExportButtons provide quick access to several download options (such as PDFs) and other LibreVerse tools (such as those from Commons & Conductor) while reading on the LibreTexts libraries.",
+  "license": "MIT",
+  "author": "LibreTexts, Inc.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vite": "^6.0.11"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  }
+}
