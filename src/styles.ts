@@ -5,6 +5,7 @@
  */
 import {
   ID_CONTAINER_DIV,
+  ID_STYLE_BLOCK,
   ID_PDF_DROPDOWN_BTN,
   ID_DWNLD_DROPDOWN_BTN,
   ID_PDF_DROPDOWN_CONTENT,
@@ -25,9 +26,14 @@ import {
 } from './constants';
 
 /**
- * Appends the export button row's styles to the document head.
+ * Appends the export button row's styles to the document head. Idempotent: the button row
+ * is rebuilt in place after a compile finishes, and the `ID_STYLE_BLOCK` guard keeps that
+ * from stacking a duplicate `<style>` block per rebuild.
  */
 export const injectExportButtonStyles = (): void => {
+  if (document.getElementById(ID_STYLE_BLOCK)) {
+    return;
+  }
   const commonButtonStyles = `
     color: #FFFFFF !important;
     border: none !important;
@@ -53,8 +59,9 @@ export const injectExportButtonStyles = (): void => {
     color: #FFFFFF !important;
     height: 40px !important;
   `;
-  document.head.insertAdjacentHTML('beforeend', `
-  <style>
+  const styleBlock = document.createElement('style');
+  styleBlock.id = ID_STYLE_BLOCK;
+  styleBlock.textContent = `
     #${ID_CONTAINER_DIV} {
       display: flex;
       flex-wrap: wrap;
@@ -217,6 +224,6 @@ export const injectExportButtonStyles = (): void => {
     .${CLASS_DONATE_ICON_SPAN} {
       padding-top: 3px
     }
-  </style>
-`);
+`;
+  document.head.appendChild(styleBlock);
 };

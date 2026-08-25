@@ -1,5 +1,7 @@
 /**
- * @file Compiles a page or book on demand through the Shapeshift export service.
+ * @file Compiles a page or book on demand through the Shapeshift export service. A
+ * finished job dispatches `libre-exportjobfinished` on `window`; that event is part of
+ * the public surface and is what drives the post-compile row refresh in `refresh.ts`.
  */
 import { getDownloadURL } from './api';
 import {
@@ -13,6 +15,24 @@ import type { ShapeshiftJobResponse } from './types/api';
 // Export jobs currently being polled, keyed by target URL. Prevents repeated clicks from
 // submitting duplicate jobs and spawning parallel poll loops against the Shapeshift API.
 const activeBatchJobs = new Set<string>();
+
+/**
+ * Surfaces export job status by mutating the PDF dropdown button's label in place, since
+ * Shapeshift exposes no progress stream. The element is looked up on every write rather
+ * than captured once: the button row is rebuilt after a compile finishes, so a captured
+ * reference would go stale, and the button is absent entirely on non-content pages where
+ * no PDF options were rendered.
+ *
+ * @param {string} label - The text to display on the dropdown button.
+ */
+const setBatchStatus = (label: string): void => {
+  const batchButton = document.getElementById(ID_PDF_DROPDOWN_BTN);
+  if (!batchButton) {
+    return;
+  }
+  batchButton.classList.remove('material-icons');
+  batchButton.innerText = label;
+};
 
 /**
  * Submits an export job to the Shapeshift service to compile the current page or book,
@@ -42,9 +62,7 @@ export const batch = async (target?: string): Promise<void> => {
   }
   activeBatchJobs.add(jobTarget);
 
-  const batchButton = document.getElementById(ID_PDF_DROPDOWN_BTN)!;
-  batchButton.classList.remove('material-icons');
-  batchButton.innerText = 'Request sent...';
+  setBatchStatus('Request sent...');
 
   /**
    * Marks the job for this target as no longer in-flight (allowing a future retry) and
@@ -54,7 +72,7 @@ export const batch = async (target?: string): Promise<void> => {
    */
   const endBatchJob = (label: string): void => {
     activeBatchJobs.delete(jobTarget);
-    batchButton.innerText = label;
+    setBatchStatus(label);
   };
 
   /**
@@ -77,6 +95,13 @@ export const batch = async (target?: string): Promise<void> => {
         window.LibreTextsBatchCompleted![jobTarget] = fileLocation;
         window.open(fileLocation, '_blank', 'noreferrer');
         endBatchJob('Finished');
+        // A first-ever compile is also what syncs the book into Conductor and writes its
+        // Commons `exportInfo`. Announce completion so the row can pick that up once it
+        // lands; other page scripts can listen too.
+        const exportJobFinished = new Event('libre-exportjobfinished', {
+          cancelable: true,
+        });
+        window.dispatchEvent(exportJobFinished);
         return;
       }
       if (job.status === 'failed') {
@@ -110,7 +135,7 @@ export const batch = async (target?: string): Promise<void> => {
     if (!jobRes.ok || !jobID) {
       throw new Error(jobBody?.msg || 'Failed to create export job.');
     }
-    batchButton.innerText = 'Compiling…';
+    setBatchStatus('Compiling…');
     pollJob(jobID);
   } catch (e) {
     endBatchJob('Export failed');

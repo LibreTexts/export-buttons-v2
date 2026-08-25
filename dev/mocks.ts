@@ -8,6 +8,11 @@
  */
 import type { LibreTextsGlobal } from '../src/types/libretexts';
 
+// Flip to true to exercise a book that has never been compiled: the Commons entry and the
+// Conductor project only come into existence once an export job finishes, which is what the
+// post-compile refresh in `src/refresh.ts` waits for.
+const SIMULATE_NEW_BOOK = false;
+
 const SUBDOMAIN = 'chem';
 const COVERPAGE_ID = 207587;
 const PAGE_ID = 207589;
@@ -67,10 +72,19 @@ const json = (body: unknown): Response => (
 
 const realFetch = window.fetch.bind(window);
 
+// Flipped by a finished export job below, standing in for Shapeshift syncing the book into
+// Conductor and writing its Commons `exportInfo`.
+let bookCompiled = !SIMULATE_NEW_BOOK;
+
 window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 
   if (url.includes('/api/v1/commons/book/')) {
+    // No `book` key: the text has no catalog entry at all, so the Downloads dropdown, Buy
+    // Print Copy, and every Commons-gated button are absent from the initial row.
+    if (!bookCompiled) {
+      return json({});
+    }
     return json({
       book: {
         bookID: BOOK_ID,
@@ -91,12 +105,16 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Res
   }
 
   if (url.includes('/api/v1/project/find-by-book/')) {
+    if (!bookCompiled) {
+      return json({});
+    }
     return json({ projectID: 'sample-project-id' });
   }
 
   // Shapeshift job submission and polling: report an immediately finished job so the
   // "Compiling…" -> "Finished" transition can be exercised without hitting the service.
   if (url.includes('downloads.libretexts.org/api/v1/job')) {
+    bookCompiled = true;
     return json({ data: { id: 'sample-job-id', bookID: BOOK_ID, status: 'finished' } });
   }
 

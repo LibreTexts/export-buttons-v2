@@ -27,6 +27,7 @@ import {
   ID_COMMONS_MATERIALS_BTN,
   ID_CONDUCTOR_PROJECT_BTN,
   ID_CONTAINER_DIV,
+  ID_DONORBOX_SCRIPT,
   ID_DWNLD_DROPDOWN_BTN,
   ID_DWNLD_DROPDOWN_CONTENT,
   ID_PDF_DROPDOWN_BTN,
@@ -37,6 +38,7 @@ import {
 import { assignProps } from './dom';
 import { createDropdown } from './dropdown';
 import type { DropdownOption } from './dropdown';
+import { refreshAfterCompile } from './refresh';
 import { state } from './state';
 import { injectExportButtonStyles } from './styles';
 
@@ -58,8 +60,12 @@ const readHolder = (id: string): string => {
 /**
  * Retrieves information about the current LibreText and inserts applicable export dropdowns
  *  and the Readability menu toggle into the DOM.
+ *
+ * Safe to run more than once: it always rebuilds the row from freshly fetched data and
+ * replaces the social-share bar's contents wholesale, which is how the post-compile
+ * refresh in `refresh.ts` surfaces downloads that a compile just unlocked.
  */
-const loadExportButtons = async (): Promise<void> => {
+const buildExportButtons = async (): Promise<void> => {
   try {
     // These four holders are provided by the host page. Reading them inside the try means a
     // broken host contract still leaves the global assignments below intact, so other page
@@ -412,8 +418,13 @@ const loadExportButtons = async (): Promise<void> => {
 
       exportContainer.appendChild(donorBoxLink);
       window.DonorBox = { widgetLinkClassName: CLASS_DONORBOX_LINK };
+      // The popup script binds to the donate link when it loads, so a rebuild has to drop
+      // the previous copy and re-add it: leaving it in place would leave the freshly
+      // created link unwired, and appending blindly would stack duplicate scripts.
+      document.getElementById(ID_DONORBOX_SCRIPT)?.remove();
       const donorBoxScript = document.createElement('script');
       assignProps(donorBoxScript, {
+        id: ID_DONORBOX_SCRIPT,
         type: 'text/javascript',
         src: 'https://donorbox.org/install-popup-button.js',
         defer: true,
@@ -474,6 +485,19 @@ const loadExportButtons = async (): Promise<void> => {
   } catch (e) {
     console.error(`[ExportButtons]: ${(e as Error).toString()}`);
   }
+};
+
+/**
+ * Builds the button row, then keeps it current: a finished export job can make prepared
+ * downloads (and, for a never-compiled book, the whole Commons/Conductor block) available
+ * for the first time, so the row is rebuilt once that data lands.
+ */
+const loadExportButtons = async (): Promise<void> => {
+  await buildExportButtons();
+
+  window.addEventListener('libre-exportjobfinished', () => {
+    void refreshAfterCompile(buildExportButtons);
+  });
 
   LibreTexts.active.exportButtons = true;
   /* attach functions to global namespace */

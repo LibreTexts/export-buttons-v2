@@ -75,9 +75,16 @@ export const getBook = async (): Promise<string | false> => {
 /**
  * Attempts to retrieve a LibreText's catalog listing in the LibreCommons.
  *
+ * @param {object} [options] - Lookup options.
+ * @param {boolean} [options.dispatchEvent=true] - Whether to announce the result on
+ *  `window` as `libre-commonsinfoavailable`. The post-compile refresh in `refresh.ts`
+ *  polls this endpoint repeatedly and opts out so it doesn't spam the public event;
+ *  `LibreTexts.current.commons` is still updated either way.
  * @returns {Promise<object|null>} The book's listing, or null if not found.
  */
-export const getBookCommonsEntry = async (): Promise<CommonsBook | null> => {
+export const getBookCommonsEntry = async (
+  { dispatchEvent = true }: { dispatchEvent?: boolean } = {},
+): Promise<CommonsBook | null> => {
   if (!state.currentCoverpage) {
     await loadCoverpage();
   }
@@ -91,10 +98,12 @@ export const getBookCommonsEntry = async (): Promise<CommonsBook | null> => {
         const entryData: CommonsBookResponse = await commonsRes.json();
         const bookData = entryData.book;
         LibreTexts.current.commons = bookData;
-        const commonsInfoAvailable = new Event('libre-commonsinfoavailable', {
-          cancelable: true,
-        });
-        window.dispatchEvent(commonsInfoAvailable);
+        if (dispatchEvent) {
+          const commonsInfoAvailable = new Event('libre-commonsinfoavailable', {
+            cancelable: true,
+          });
+          window.dispatchEvent(commonsInfoAvailable);
+        }
         return bookData ?? null;
       }
     } catch (e) {
