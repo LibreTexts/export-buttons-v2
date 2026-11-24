@@ -42,23 +42,14 @@ export interface CommonsBook {
   hasAdaptCourse?: boolean;
   adaptCourseID?: string;
   hasMaterials?: boolean;
+  /** The linked Conductor project, when one exists. */
+  projectID?: string;
   [key: string]: unknown;
 }
 
 /** `GET /api/v1/commons/book/{bookID}` on commons.libretexts.org. */
 export interface CommonsBookResponse {
   book?: CommonsBook;
-}
-
-/** `GET /api/v1/project/find-by-book/{bookID}` on commons.libretexts.org. */
-export interface ConductorProjectResponse {
-  projectID?: string;
-}
-
-/** A memoized Conductor project ID, stamped so it can be expired. */
-export interface CachedProjectID {
-  projectID: string;
-  cachedAt: number;
 }
 
 /** A Shapeshift export job. */

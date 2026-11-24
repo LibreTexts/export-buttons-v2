@@ -6,7 +6,6 @@ import {
   getBook,
   getBookCommonsEntry,
   getBookID,
-  getBookProjectID,
   getDownloadURL,
 } from './api';
 import { batch } from './batch';
@@ -442,10 +441,12 @@ const buildExportButtons = async (prefetched?: CommonsBook): Promise<void> => {
       document.body.append(donorBoxScript);
     }
 
-    // Only Pro users see the button, and nothing reads the project ID for anonymous
-    // readers, so skip the Conductor lookup for them entirely.
-    const conductorProjectID = isPro ? await getBookProjectID() : null;
+    const conductorProjectID = commonsEntry?.projectID;
     if (conductorProjectID) {
+      LibreTexts.current.projectID = conductorProjectID;
+      window.dispatchEvent(new Event('libre-projectinfoavailable', { cancelable: true }));
+    }
+    if (conductorProjectID && isPro) {
       /* Add Conductor Project button */
       const conductorButton = document.createElement('a');
       assignProps(conductorButton, {

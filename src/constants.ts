@@ -48,7 +48,3 @@ export const MAX_JOB_POLL_ATTEMPTS = 360; // ~30 min at JOB_POLL_INTERVAL_MS; bo
 export const POST_COMPILE_REFRESH_DELAY_MS = 5000;
 export const POST_COMPILE_REFRESH_INTERVAL_MS = 10000;
 export const MAX_POST_COMPILE_REFRESH_ATTEMPTS = 6; // ~1 min of probing after the delay
-
-// Conductor project IDs are memoized in localStorage. The TTL bounds how long a reader
-// keeps a stale ID after a book's project is re-linked or removed.
-export const PROJECT_ID_CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours

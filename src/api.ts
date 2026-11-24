@@ -4,14 +4,9 @@
  * `libre-*infoavailable` event on `window` so other page scripts can react once the
  * data lands.
  */
-import { PROJECT_ID_CACHE_TTL_MS, SHAPESHIFT_API } from './constants';
+import { SHAPESHIFT_API } from './constants';
 import { state } from './state';
-import type {
-  CachedProjectID,
-  CommonsBook,
-  CommonsBookResponse,
-  ConductorProjectResponse,
-} from './types/api';
+import type { CommonsBook, CommonsBookResponse } from './types/api';
 
 /**
  * Builds the Shapeshift book identifier (e.g. "chem-12345") for the current text.
@@ -92,7 +87,12 @@ export const getBookCommonsEntry = async (
     try {
       const commonsRes = await fetch(
         `https://commons.libretexts.org/api/v1/commons/book/${state.currentSubdomain}-${state.currentCoverpage.id}`,
-        { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
+        {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          // The endpoint sends max-age=300. The post-compile probe must revalidate, or it
+          // would keep reading the pre-compile entry from the HTTP cache.
+          cache: dispatchEvent ? 'default' : 'no-cache',
+        },
       );
       if (commonsRes.status === 200) {
         const entryData: CommonsBookResponse = await commonsRes.json();
@@ -112,92 +112,3 @@ export const getBookCommonsEntry = async (
   }
   return null;
 };
-
-/**
- * Builds the localStorage key under which a book's Conductor project ID is memoized.
- *
- * @returns {string} The cache key for the current text.
- */
-const getProjectIDCacheKey = (): string => (
-  `projectID-${state.currentSubdomain}-${state.currentCoverpage?.id}`
-);
-
-/**
- * Reads a memoized Conductor project ID, treating anything older than
- * `PROJECT_ID_CACHE_TTL_MS` as a miss so a re-linked or removed project is picked up on
- * the reader's next visit rather than never.
- *
- * @returns {string|null} The cached project ID, or null if absent, expired, or unreadable.
- */
-const readCachedProjectID = (): string | null => {
-  const raw = localStorage.getItem(getProjectIDCacheKey());
-  if (!raw) {
-    return null;
-  }
-  try {
-    // Entries written before the TTL existed are bare ID strings, not JSON. Treat those
-    // as a miss so they are refetched once and rewritten in the current shape.
-    const entry: unknown = JSON.parse(raw);
-    if (
-      typeof entry === 'object' && entry !== null
-      && typeof (entry as CachedProjectID).projectID === 'string'
-      && typeof (entry as CachedProjectID).cachedAt === 'number'
-    ) {
-      const { projectID, cachedAt } = entry as CachedProjectID;
-      if (Date.now() - cachedAt < PROJECT_ID_CACHE_TTL_MS) {
-        return projectID;
-      }
-    }
-  } catch {
-    // Not JSON: a legacy entry or unrelated data. Fall through to the miss below.
-  }
-  localStorage.removeItem(getProjectIDCacheKey());
-  return null;
-};
-
-export const getBookProjectID = async (): Promise<string | null> => {
-  try {
-    if(!state.currentCoverpage){
-      await loadCoverpage();
-    }
-    if(state.currentCoverpage){
-      const projectInfoAvailable = new Event('libre-projectinfoavailable', {
-        cancelable: true,
-      });
-
-      // Check local storage for a still-fresh projectID first
-      const projectID = readCachedProjectID();
-      if(projectID){
-        LibreTexts.current.projectID = projectID;
-        window.dispatchEvent(projectInfoAvailable);
-        return projectID;
-      }
-
-      // If not found in local storage, fetch from conductor
-      const conductorRes = await fetch(
-        `https://commons.libretexts.org/api/v1/project/find-by-book/${state.currentSubdomain}-${state.currentCoverpage.id}`,
-        { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
-      );
-
-      if(conductorRes.status === 200){
-        const projectData: ConductorProjectResponse = await conductorRes.json();
-        const foundProjectID = projectData.projectID;
-        LibreTexts.current.projectID = foundProjectID;
-        window.dispatchEvent(projectInfoAvailable);
-
-        // Save projectID to local storage, stamped so it can expire
-        if(foundProjectID){
-          localStorage.setItem(
-            getProjectIDCacheKey(),
-            JSON.stringify({ projectID: foundProjectID, cachedAt: Date.now() }),
-          );
-        }
-
-        return foundProjectID ?? null;
-      }
-    }
-  } catch (e) {
-    console.error(`[ExportButtons]: ${(e as Error).toString()}`);
-  }
-  return null;
-}

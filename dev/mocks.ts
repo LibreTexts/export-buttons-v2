@@ -100,15 +100,9 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Res
         hasAdaptCourse: true,
         adaptCourseID: '1234',
         hasMaterials: true,
+        projectID: 'sample-project-id',
       },
     });
-  }
-
-  if (url.includes('/api/v1/project/find-by-book/')) {
-    if (!bookCompiled) {
-      return json({});
-    }
-    return json({ projectID: 'sample-project-id' });
   }
 
   // Shapeshift job submission and polling: report an immediately finished job so the
@@ -120,7 +114,3 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Res
 
   return realFetch(input, init);
 };
-
-// The Conductor project ID is cached in localStorage for 12 hours, so clear it on every
-// harness load or edits to the stub above would not take effect until the TTL lapses.
-localStorage.removeItem(`projectID-${SUBDOMAIN}-${COVERPAGE_ID}`);
