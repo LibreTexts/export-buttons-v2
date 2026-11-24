@@ -16,6 +16,7 @@ import {
   POST_COMPILE_REFRESH_DELAY_MS,
   POST_COMPILE_REFRESH_INTERVAL_MS,
 } from './constants';
+import type { CommonsBook } from './types/api';
 
 // Guards against a second job finishing while a refresh is still probing, which would
 // otherwise run two poll loops and rebuild the row twice.
@@ -40,7 +41,7 @@ const sleep = (ms: number): Promise<void> => (
  * @returns {Promise<void>} Resolves once the row has been rebuilt or the probes are spent.
  */
 export const refreshAfterCompile = async (
-  rebuild: () => Promise<void>,
+  rebuild: (commonsEntry: CommonsBook) => Promise<void>,
 ): Promise<void> => {
   if (refreshInFlight) {
     return;
@@ -55,11 +56,11 @@ export const refreshAfterCompile = async (
   try {
     await sleep(POST_COMPILE_REFRESH_DELAY_MS);
     for (let attempt = 1; attempt <= MAX_POST_COMPILE_REFRESH_ATTEMPTS; attempt += 1) {
-      // Probe quietly: `rebuild` refetches the entry and fires the public events itself,
-      // so announcing every unsuccessful poll would be noise.
+      // Probe quietly: `rebuild` fires the public events itself, so announcing every
+      // unsuccessful poll would be noise. The winning entry is handed over, not refetched.
       const commonsEntry = await getBookCommonsEntry({ dispatchEvent: false });
       if (commonsEntry?.exportInfo) {
-        await rebuild();
+        await rebuild(commonsEntry);
         return;
       }
       if (attempt < MAX_POST_COMPILE_REFRESH_ATTEMPTS) {

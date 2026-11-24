@@ -41,6 +41,7 @@ import type { DropdownOption } from './dropdown';
 import { refreshAfterCompile } from './refresh';
 import { state } from './state';
 import { injectExportButtonStyles } from './styles';
+import type { CommonsBook } from './types/api';
 
 /**
  * Reads one of the hidden holder elements the host page is contracted to provide.
@@ -64,8 +65,10 @@ const readHolder = (id: string): string => {
  * Safe to run more than once: it always rebuilds the row from freshly fetched data and
  * replaces the social-share bar's contents wholesale, which is how the post-compile
  * refresh in `refresh.ts` surfaces downloads that a compile just unlocked.
+ *
+ * @param {object} [prefetched] - A Commons entry the caller already holds, to skip refetching it.
  */
-const buildExportButtons = async (): Promise<void> => {
+const buildExportButtons = async (prefetched?: CommonsBook): Promise<void> => {
   try {
     // These four holders are provided by the host page. Reading them inside the try means a
     // broken host contract still leaves the global assignments below intact, so other page
@@ -80,7 +83,14 @@ const buildExportButtons = async (): Promise<void> => {
     // `exportInfo` object is only written once the book has been compiled, so its
     // presence is what marks prepared downloads as available. The systemwide
     // DownloadsCenter listings this used to read are no longer maintained.
-    const commonsEntry = await getBookCommonsEntry();
+    let commonsEntry: CommonsBook | null;
+    if (prefetched) {
+      // The post-compile probe fetched this quietly, so announce it here instead.
+      commonsEntry = prefetched;
+      window.dispatchEvent(new Event('libre-commonsinfoavailable', { cancelable: true }));
+    } else {
+      commonsEntry = await getBookCommonsEntry();
+    }
     const downloadsAvailable = Boolean(commonsEntry?.exportInfo);
 
     const topicGuide = tags.includes('"article:topic-guide"');
@@ -432,8 +442,10 @@ const buildExportButtons = async (): Promise<void> => {
       document.body.append(donorBoxScript);
     }
 
-    const conductorProjectID = await getBookProjectID();
-    if(conductorProjectID && isPro){
+    // Only Pro users see the button, and nothing reads the project ID for anonymous
+    // readers, so skip the Conductor lookup for them entirely.
+    const conductorProjectID = isPro ? await getBookProjectID() : null;
+    if (conductorProjectID) {
       /* Add Conductor Project button */
       const conductorButton = document.createElement('a');
       assignProps(conductorButton, {
