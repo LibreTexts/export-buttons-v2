@@ -442,14 +442,10 @@ const buildExportButtons = async (): Promise<void> => {
         title: 'View Conductor Project (opens in new tab)',
         type: 'button',
         target: '_blank',
-        rel: 'noreferrer',
-        href: `https://conductor.libretexts.org/projects/${conductorProjectID}`,
+        rel: 'noopener',
+        href: `https://commons.libretexts.org/projects/${conductorProjectID}`,
       });
 
-      // const openConductorProject = (e) => {
-      //   e.preventDefault();
-      //   window.open(`https://commons.libretexts.org/projects/${conductorProjectID}`, '_blank', 'noreferrer');
-      // }
 
       // conductorButton.addEventListener('click', openConductorProject);
       // conductorButton.addEventListener('keydown', (e) => {
